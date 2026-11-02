@@ -1,0 +1,7 @@
+<html><body><pre id=o></pre><script>
+document.getElementById('o').textContent = JSON.stringify({
+  secure: window.isSecureContext,
+  bluetooth: typeof navigator.bluetooth,
+  origin: location.origin
+});
+</script></body></html>

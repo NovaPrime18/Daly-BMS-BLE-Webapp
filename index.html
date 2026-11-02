@@ -1,0 +1,1828 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Daly · Smart BMS</title>
+<meta name="theme-color" content="#07090d">
+<meta name="color-scheme" content="dark">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="apple-touch-icon" href="./icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<style>
+  :root{
+    --bg:#07090d; --panel:rgba(255,255,255,.035); --panel2:rgba(255,255,255,.06);
+    --line:rgba(255,255,255,.09); --line2:rgba(255,255,255,.16);
+    --ink:#e9eef7; --dim:#7b8697; --dim2:#4d5666;
+    --acc:#25e3a3; --acc2:#37c8ff; --warn:#ffb020; --bad:#ff4d5e; --violet:#a78bfa;
+    --r:16px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{
+    background:
+      radial-gradient(900px 500px at 12% -10%, rgba(37,227,163,.10), transparent 60%),
+      radial-gradient(800px 500px at 92% 0%, rgba(55,200,255,.09), transparent 60%),
+      radial-gradient(700px 600px at 50% 120%, rgba(167,139,250,.07), transparent 60%),
+      var(--bg);
+    color:var(--ink);
+    font:15px/1.45 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+    min-height:100%;
+    padding:0 0 40px;
+  }
+  body::before{
+    content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+    background-image:linear-gradient(rgba(255,255,255,.022) 1px,transparent 1px),
+                     linear-gradient(90deg,rgba(255,255,255,.022) 1px,transparent 1px);
+    background-size:44px 44px;
+    mask-image:radial-gradient(circle at 50% 0%,#000 0%,transparent 78%);
+  }
+  .wrap{position:relative;z-index:1;max-width:1180px;margin:0 auto;padding:0 18px}
+  .num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1;letter-spacing:-.02em}
+
+  /* ---------- header ---------- */
+  header{display:flex;align-items:center;gap:14px;padding:20px 2px 16px;flex-wrap:wrap}
+  .brand{display:flex;align-items:center;gap:11px;margin-right:auto}
+  .logo{
+    width:34px;height:34px;border-radius:10px;flex:0 0 auto;
+    background:linear-gradient(140deg,var(--acc),var(--acc2));
+    display:grid;place-items:center;color:#02231a;font-weight:800;font-size:17px;
+    box-shadow:0 0 0 1px rgba(255,255,255,.14),0 8px 24px -6px rgba(37,227,163,.55)
+  }
+  .brand h1{margin:0;font-size:15px;letter-spacing:.14em;text-transform:uppercase;font-weight:650}
+  .brand p{margin:1px 0 0;font-size:11.5px;color:var(--dim);letter-spacing:.06em}
+
+  .pill{
+    display:inline-flex;align-items:center;gap:7px;padding:6px 11px;border-radius:999px;
+    background:var(--panel);border:1px solid var(--line);font-size:12px;color:var(--dim);
+    white-space:nowrap
+  }
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--dim2);flex:0 0 auto}
+  .pill.on{color:#d5ffee;border-color:rgba(37,227,163,.35);background:rgba(37,227,163,.09)}
+  .pill.on .dot{background:var(--acc);box-shadow:0 0 10px var(--acc);animation:breathe 2.4s ease-in-out infinite}
+  .pill.demo{color:#ffe3ac;border-color:rgba(255,176,32,.35);background:rgba(255,176,32,.09)}
+  .pill.demo .dot{background:var(--warn);box-shadow:0 0 10px var(--warn)}
+  @keyframes breathe{0%,100%{opacity:1}50%{opacity:.35}}
+
+  button{font:inherit;color:inherit;cursor:pointer;border:none;background:none}
+  .btn{
+    display:inline-flex;align-items:center;gap:8px;padding:9px 15px;border-radius:11px;
+    background:var(--panel2);border:1px solid var(--line2);font-size:13px;font-weight:550;
+    transition:transform .12s ease,background .18s ease,border-color .18s ease,box-shadow .18s
+  }
+  .btn:hover{background:rgba(255,255,255,.1);transform:translateY(-1px)}
+  .btn:active{transform:translateY(0) scale(.985)}
+  .btn.primary{
+    background:linear-gradient(140deg,var(--acc),#12b98a);color:#03231b;border-color:transparent;
+    box-shadow:0 10px 26px -12px rgba(37,227,163,.9)
+  }
+  .btn.primary:hover{box-shadow:0 14px 30px -12px rgba(37,227,163,1)}
+  .btn[disabled]{opacity:.4;cursor:not-allowed;transform:none!important}
+
+  /* ---------- grid ---------- */
+  .grid{display:grid;grid-template-columns:340px 1fr;gap:14px;align-items:start}
+  @media (max-width:900px){.grid{grid-template-columns:1fr}}
+  .col{display:grid;gap:14px}
+
+  .card{
+    position:relative;border-radius:var(--r);padding:16px 17px;
+    background:linear-gradient(180deg,rgba(255,255,255,.055),rgba(255,255,255,.022));
+    border:1px solid var(--line);
+    box-shadow:0 1px 0 rgba(255,255,255,.05) inset,0 24px 50px -34px rgba(0,0,0,.9);
+    backdrop-filter:blur(12px)
+  }
+  .card h2{
+    margin:0 0 13px;font-size:11px;letter-spacing:.15em;text-transform:uppercase;
+    color:var(--dim);font-weight:650;display:flex;align-items:center;gap:9px
+  }
+  .card h2 .tag{margin-left:auto;letter-spacing:0;text-transform:none;font-size:11px;color:var(--dim2);font-weight:500}
+  .card h2::before{content:"";width:3px;height:11px;border-radius:2px;background:linear-gradient(var(--acc),var(--acc2));flex:0 0 auto}
+
+  /* ---------- SOC hero ---------- */
+  .hero{display:flex;flex-direction:column;align-items:center;gap:2px}
+  .gauge{position:relative;width:196px;height:196px;margin:2px 0 4px}
+  .gauge svg{transform:rotate(-90deg);overflow:visible}
+  .gauge .track{stroke:rgba(255,255,255,.07)}
+  .gauge .val{stroke:url(#g);stroke-linecap:round;transition:stroke-dashoffset .7s cubic-bezier(.4,0,.2,1);
+    filter:drop-shadow(0 0 9px rgba(37,227,163,.55))}
+  .gauge .mid{position:absolute;inset:0;display:grid;place-content:center;text-align:center}
+  .gauge .pct{font-size:44px;font-weight:700;line-height:1;letter-spacing:-.03em}
+  .gauge .pct small{font-size:17px;font-weight:600;color:var(--dim);margin-left:2px}
+  .gauge .lbl{font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--dim);margin-top:6px;font-weight:600}
+
+  .state{
+    display:inline-flex;align-items:center;gap:8px;padding:6px 13px;border-radius:999px;
+    font-size:12.5px;font-weight:600;letter-spacing:.02em;margin-top:2px;
+    border:1px solid var(--line);background:var(--panel);color:var(--dim)
+  }
+  .state::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+  .state.charging{color:#8ef7cd;border-color:rgba(37,227,163,.34);background:rgba(37,227,163,.09)}
+  .state.discharging{color:#9adcff;border-color:rgba(55,200,255,.34);background:rgba(55,200,255,.09)}
+  .state.stationary{color:#c9b6ff;border-color:rgba(167,139,250,.32);background:rgba(167,139,250,.09)}
+
+  .badges{display:flex;gap:7px;margin-top:13px;flex-wrap:wrap;justify-content:center}
+  .badge{
+    padding:5px 10px;border-radius:8px;font-size:11px;letter-spacing:.05em;text-transform:uppercase;
+    font-weight:650;border:1px solid var(--line);background:var(--panel);color:var(--dim2)
+  }
+  .badge{color:var(--dim)}
+  .badge.yes{color:#0b2a20;background:var(--acc);border-color:transparent}
+  .badge.no,.badge.off{color:var(--dim);border-style:dashed;background:transparent}
+  .badge.balyes{color:#2b1a00;background:var(--warn);border-color:transparent}
+
+  /* ---------- stat blocks ---------- */
+  .stats{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+  .stat{
+    background:rgba(255,255,255,.028);border:1px solid var(--line);border-radius:12px;
+    padding:11px 12px;min-width:0
+  }
+  .stat.wide{grid-column:span 2}
+  .stat .k{font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:var(--dim2);font-weight:650}
+  .stat .v{font-size:23px;font-weight:680;margin-top:3px;display:flex;align-items:baseline;gap:3px}
+  .stat .v u{text-decoration:none;font-size:12px;font-weight:600;color:var(--dim);letter-spacing:.02em}
+  .stat .sub{font-size:11px;color:var(--dim);margin-top:2px}
+
+  /* bipolar current bar */
+  .bipolar{position:relative;height:7px;border-radius:4px;background:rgba(255,255,255,.07);margin-top:9px;overflow:hidden}
+  .bipolar .zero{position:absolute;left:50%;top:0;bottom:0;width:1px;background:rgba(255,255,255,.3)}
+  .bipolar .fill{position:absolute;top:0;bottom:0;border-radius:4px;transition:left .45s cubic-bezier(.4,0,.2,1),width .45s cubic-bezier(.4,0,.2,1)}
+  .bipolar .fill.chg{background:linear-gradient(90deg,rgba(37,227,163,.35),var(--acc))}
+  .bipolar .fill.dsg{background:linear-gradient(90deg,var(--acc2),rgba(55,200,255,.35))}
+
+  /* ---------- cells ---------- */
+  .cellhead{display:flex;align-items:baseline;gap:12px;margin-bottom:10px;flex-wrap:wrap}
+  .cellhead .big{font-size:26px;font-weight:680}
+  .cellhead .big u{text-decoration:none;font-size:13px;color:var(--dim);margin-left:2px}
+  .cellhead .spread{margin-left:auto;text-align:right;font-size:11px;color:var(--dim);line-height:1.5}
+  .cellhead .spread b{display:block;font-size:15px;color:var(--ink);font-weight:650}
+
+  .cellchart{position:relative;height:186px;display:flex;align-items:flex-end;gap:3px;
+    padding:14px 0 0;border-bottom:1px solid var(--line)}
+  .cellchart .avgl{position:absolute;left:0;right:0;bottom:0;border-top:1px dashed rgba(255,255,255,.28);pointer-events:none;
+    transition:bottom .45s cubic-bezier(.4,0,.2,1);z-index:4}
+
+
+  .bar{flex:1 1 0;min-width:0;border-radius:4px 4px 0 0;position:relative;
+    transition:height .45s cubic-bezier(.4,0,.2,1),background .3s;cursor:default}
+  .bar::after{content:attr(data-i);position:absolute;top:100%;left:0;right:0;text-align:center;
+    font-size:8.5px;color:var(--dim2);padding-top:5px;font-variant-numeric:tabular-nums}
+  .bar:hover{filter:brightness(1.35)}
+  .bar .tip{position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);
+    background:#11151d;border:1px solid var(--line2);border-radius:7px;padding:3px 7px;white-space:nowrap;
+    font-size:10.5px;color:var(--ink);opacity:0;transition:opacity .15s;pointer-events:none;z-index:5;
+    font-variant-numeric:tabular-nums;box-shadow:0 8px 20px -10px #000}
+  .bar:hover .tip{opacity:1}
+  .cellfoot{display:flex;justify-content:space-between;margin-top:19px;font-size:10px;color:var(--dim2);letter-spacing:.05em}
+
+  /* heatmap */
+  .heat{margin-top:14px}
+  .heat canvas{width:100%;height:46px;display:block;border-radius:7px;border:1px solid var(--line);background:rgba(0,0,0,.25)}
+  .heat .cap{display:flex;justify-content:space-between;font-size:9.5px;color:var(--dim2);letter-spacing:.06em;margin-top:5px}
+
+  /* charts */
+  .chartbox{position:relative}
+  .chartbox canvas{width:100%;height:132px;display:block}
+  .chartlegend{display:flex;gap:14px;font-size:10.5px;color:var(--dim2);margin-top:7px;flex-wrap:wrap}
+  .chartlegend i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+
+  /* ---------- MOSFET ---------- */
+  .mosgrid{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+  @media (max-width:560px){.mosgrid{grid-template-columns:1fr}}
+  .mos{
+    display:flex;align-items:center;gap:13px;padding:14px;border-radius:13px;
+    background:rgba(255,255,255,.028);border:1px solid var(--line);transition:border-color .25s,background .25s
+  }
+  .mos.on{border-color:rgba(37,227,163,.34);background:linear-gradient(140deg,rgba(37,227,163,.1),rgba(255,255,255,.02))}
+  .mos .txt{min-width:0;flex:1}
+  .mos .nm{font-size:13.5px;font-weight:620;display:flex;align-items:center;gap:6px}
+  .mos .ds{font-size:11px;color:var(--dim);margin-top:2px}
+  .mos .ds b{color:var(--acc);font-weight:650}
+  .mos:not(.on) .ds b{color:var(--dim2)}
+
+  .switch{
+    position:relative;width:56px;height:31px;border-radius:999px;flex:0 0 auto;
+    background:rgba(255,255,255,.1);border:1px solid var(--line2);
+    transition:background .28s cubic-bezier(.4,0,.2,1),border-color .28s;cursor:pointer;
+    padding:0;-webkit-tap-highlight-color:transparent
+  }
+  .switch::after{
+    content:"";position:absolute;top:3px;left:3px;width:23px;height:23px;border-radius:50%;
+    background:#cfd6e2;transition:transform .28s cubic-bezier(.34,1.4,.64,1),background .28s;
+    box-shadow:0 2px 6px rgba(0,0,0,.5)
+  }
+  .switch[aria-checked="true"]{background:linear-gradient(140deg,var(--acc),#12b98a);border-color:transparent;
+    box-shadow:0 0 18px -4px rgba(37,227,163,.7)}
+  .switch[aria-checked="true"]::after{transform:translateX(25px);background:#04231b}
+  .switch[disabled]{opacity:.35;cursor:not-allowed}
+  .switch.busy{pointer-events:none}
+  .switch.busy::after{animation:busy .9s linear infinite}
+  @keyframes busy{50%{opacity:.35}}
+  .mosnote{font-size:11px;color:var(--dim2);margin-top:11px;line-height:1.5}
+
+  /* ---------- faults ---------- */
+  .faults{display:flex;flex-wrap:wrap;gap:7px}
+  .fault{
+    display:inline-flex;align-items:center;gap:7px;padding:6px 11px;border-radius:9px;font-size:12px;
+    border:1px solid rgba(255,77,94,.35);background:rgba(255,77,94,.1);color:#ffc3c9
+  }
+  .fault.warn{border-color:rgba(255,176,32,.35);background:rgba(255,176,32,.1);color:#ffdfa8}
+  .fault::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor;flex:0 0 auto}
+  .allgood{display:flex;align-items:center;gap:9px;color:#8ef7cd;font-size:13px}
+  .allgood svg{flex:0 0 auto}
+
+  /* ---------- log ---------- */
+  details.log{border-radius:var(--r);border:1px solid var(--line);background:rgba(0,0,0,.22);padding:0 15px}
+  details.log summary{cursor:pointer;padding:12px 0;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);font-weight:650;list-style:none}
+  details.log summary::-webkit-details-marker{display:none}
+  details.log summary::before{content:"▸ ";color:var(--dim2)}
+  details.log[open] summary::before{content:"▾ "}
+  details.log pre{margin:0 0 13px;font:11.5px/1.6 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    color:#9aa6b8;max-height:190px;overflow:auto;white-space:pre-wrap;word-break:break-all}
+
+  /* ---------- toast ---------- */
+  #toast{
+    position:fixed;left:50%;bottom:26px;transform:translate(-50%,20px);z-index:99;
+    background:#141922;border:1px solid var(--line2);border-radius:12px;padding:11px 17px;
+    font-size:13px;box-shadow:0 20px 50px -18px #000;opacity:0;pointer-events:none;
+    transition:opacity .25s,transform .25s;max-width:calc(100vw - 40px)
+  }
+  #toast.show{opacity:1;transform:translate(-50%,0)}
+  #toast.err{border-color:rgba(255,77,94,.5);color:#ffc3c9}
+
+  /* ---------- settings ---------- */
+  .sethead{display:flex;align-items:center;gap:13px;padding:20px 2px 14px;flex-wrap:wrap}
+  .sethead h2{margin:0;font-size:16px;letter-spacing:.02em;font-weight:650}
+  .sethead .pill{margin-left:auto}
+  .sethead .pill.unlocked{color:#d5ffee;border-color:rgba(37,227,163,.35);background:rgba(37,227,163,.09)}
+  .sethead .pill.unlocked .dot{background:var(--acc);box-shadow:0 0 10px var(--acc)}
+
+  .authcard{max-width:640px;margin:0 auto}
+  .authnote{font-size:12.5px;color:var(--dim);line-height:1.65;margin:0 0 14px}
+  .authnote.dim{color:var(--dim2);margin:12px 0 0;font-size:12px}
+  .authrow{display:flex;gap:10px}
+  .pw{
+    flex:1;min-width:0;font:inherit;font-size:17px;letter-spacing:.32em;padding:11px 14px;border-radius:11px;
+    background:rgba(0,0,0,.35);border:1px solid var(--line2);color:var(--ink);font-variant-numeric:tabular-nums
+  }
+  .pw::placeholder{letter-spacing:.3em;color:var(--dim2)}
+  .pw:focus{outline:none;border-color:rgba(37,227,163,.55);box-shadow:0 0 0 3px rgba(37,227,163,.12)}
+  .pw.bad{border-color:rgba(255,77,94,.6);box-shadow:0 0 0 3px rgba(255,77,94,.12)}
+  .autherr{color:#ff9aa4;font-size:12.5px;margin:11px 0 0}
+
+  .infocard{margin-bottom:14px}
+  .inforow{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+  .inforow div{background:rgba(255,255,255,.028);border:1px solid var(--line);border-radius:10px;padding:9px 11px;min-width:0}
+  .inforow span{display:block;font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:var(--dim2);font-weight:650}
+  .inforow b{display:block;font-size:13px;margin-top:3px;font-weight:600;overflow-wrap:anywhere;line-height:1.35}
+
+  .setwarn{
+    border:1px solid rgba(255,176,32,.32);background:rgba(255,176,32,.07);border-radius:12px;
+    padding:12px 14px;font-size:12.5px;line-height:1.6;color:#ffdfa8;margin-bottom:14px
+  }
+  .setwarn b{color:#ffd88f}
+
+  .group{margin-bottom:13px}
+  .group > summary{
+    list-style:none;cursor:pointer;display:flex;align-items:center;gap:9px;
+    padding:13px 16px;border-radius:13px;background:var(--panel2);border:1px solid var(--line);
+    font-size:12px;letter-spacing:.13em;text-transform:uppercase;font-weight:650;color:var(--dim)
+  }
+  .group > summary::-webkit-details-marker{display:none}
+  .group > summary::before{content:"▸";color:var(--dim2);font-size:11px}
+  .group[open] > summary::before{content:"▾"}
+  .group > summary .cnt{margin-left:auto;font-size:10.5px;letter-spacing:0;text-transform:none;color:var(--dim2)}
+  #groups.writing{pointer-events:none;opacity:.65;transition:opacity .2s}
+  .gnote{grid-column:1/-1;margin:2px 2px 4px;font-size:11.5px;color:var(--dim2);line-height:1.55}
+  .groupbody{
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(232px,1fr));gap:9px;
+    padding:9px;border:1px solid var(--line);border-top:none;border-radius:0 0 13px 13px;
+    background:rgba(0,0,0,.16);margin-top:-4px
+  }
+  .field{
+    display:flex;flex-direction:column;gap:5px;padding:10px 11px;border-radius:10px;
+    background:rgba(255,255,255,.025);border:1px solid transparent;transition:border-color .2s,background .2s
+  }
+  .field.ro{background:transparent;border-color:rgba(255,255,255,.05)}
+  .field.ro .roval{font-size:15px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--dim)}
+  .field.dirty{border-color:rgba(55,200,255,.4);background:rgba(55,200,255,.07);
+    box-shadow:inset 2px 0 0 var(--acc2)}
+  .field.err{border-color:rgba(255,77,94,.5);background:rgba(255,77,94,.07)}
+  .field.ok{border-color:rgba(37,227,163,.45);background:rgba(37,227,163,.07)}
+  .field .lbl{font-size:11.5px;color:var(--dim);line-height:1.35}
+  .field .inp{display:flex;align-items:baseline;gap:5px}
+  .field input,.field select{
+    flex:1;min-width:0;font:inherit;font-size:15px;font-variant-numeric:tabular-nums;font-weight:600;
+    background:transparent;border:none;border-bottom:1px solid var(--line2);color:var(--ink);
+    padding:2px 0 4px;border-radius:0
+  }
+  .field input:focus,.field select:focus{outline:none;border-bottom-color:var(--acc)}
+  .field input::-webkit-outer-spin-button,.field input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+  .field input[type=number]{-moz-appearance:textfield}
+  .field select{background:rgba(0,0,0,.3);border-radius:6px;padding:4px 6px}
+  .field select option{background:#141922;color:var(--ink)}
+  .field .unit{font-size:11px;color:var(--dim2);flex:0 0 auto}
+  .field .was{font-size:10.5px;color:var(--dim2);font-variant-numeric:tabular-nums}
+  .field .was b{color:var(--dim);font-weight:600}
+  .field .fmsg{font-size:10.5px;color:#ff9aa4;line-height:1.3}
+
+  .applybar{
+    position:sticky;bottom:0;z-index:20;display:flex;align-items:center;gap:11px;
+    margin-top:4px;padding:12px 15px;border-radius:13px;
+    background:rgba(12,16,22,.92);border:1px solid var(--line2);
+    box-shadow:0 -12px 30px -18px #000,0 18px 40px -24px #000;backdrop-filter:blur(14px)
+  }
+  .applyinfo{font-size:12.5px;color:var(--dim);margin-right:auto}
+  .applyinfo b{font-size:15px;color:var(--ink);font-variant-numeric:tabular-nums}
+  .applylog{margin-top:10px;font-size:11.5px;line-height:1.6;color:var(--dim);white-space:pre-wrap;
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+
+  .empty{color:var(--dim2);font-size:12.5px;text-align:center;padding:22px 10px;line-height:1.7}
+  .cellchart .empty{position:absolute;inset:0;display:grid;place-content:center;padding:0 14px}
+  .cellchart .empty b{color:var(--dim);font-weight:600}
+  .chartempty{position:absolute;inset:0;display:grid;place-content:center;color:var(--dim2);font-size:12.5px}
+  body.nodata .heat,body.nodata .cellfoot{display:none}
+  body.nodata .cellchart{border-bottom:none}
+  body.nodata .cellchart .cellfoot{border:0}
+  .hidden{display:none!important}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="brand">
+      <div class="logo">⚡</div>
+      <div>
+        <h1>Daly Smart BMS</h1>
+        <p>Modbus over BLE · live telemetry</p>
+      </div>
+    </div>
+    <div class="pill" id="connPill"><span class="dot"></span><span id="connText">disconnected</span></div>
+    <button class="btn hidden" id="installBtn">Install app</button>
+    <button class="btn" id="settingsBtn">Settings</button>
+    <button class="btn" id="demoBtn">Demo data</button>
+    <button class="btn primary" id="connectBtn">Connect</button>
+  </header>
+
+  <div id="dashView">
+  <div class="grid">
+
+    <!-- ================= LEFT ================= -->
+    <div class="col">
+      <section class="card hero">
+        <h2>State of charge <span class="tag" id="ageTag">no data</span></h2>
+        <div class="gauge">
+          <svg width="196" height="196" viewBox="0 0 196 196">
+            <defs>
+              <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#25e3a3"/>
+                <stop offset="55%" stop-color="#37c8ff"/>
+                <stop offset="100%" stop-color="#a78bfa"/>
+              </linearGradient>
+            </defs>
+            <circle class="track" cx="98" cy="98" r="82" fill="none" stroke-width="12"/>
+            <circle class="val" id="socArc" cx="98" cy="98" r="82" fill="none" stroke-width="12"
+                    stroke-dasharray="515.2" stroke-dashoffset="515.2"/>
+          </svg>
+          <div class="mid">
+            <div class="pct num"><span id="socVal">––</span><small>%</small></div>
+            <div class="lbl">available</div>
+          </div>
+        </div>
+        <div class="state stationary" id="statePill">idle</div>
+        <div class="badges">
+          <span class="badge no" id="bChg">chg MOS</span>
+          <span class="badge no" id="bDsg">dsg MOS</span>
+          <span class="badge" id="bBal">balancing</span>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Live <span class="tag" id="liveTag"></span></h2>
+        <div class="stats">
+          <div class="stat">
+            <div class="k">Pack voltage</div>
+            <div class="v num"><span id="vVolt">––</span><u>V</u></div>
+          </div>
+          <div class="stat">
+            <div class="k">Power</div>
+            <div class="v num"><span id="vPow">––</span><u>W</u></div>
+          </div>
+          <div class="stat wide">
+            <div class="k">Current <span id="curDir" style="color:var(--dim2);text-transform:none;letter-spacing:0"></span></div>
+            <div class="v num"><span id="vCur">––</span><u>A</u></div>
+            <div class="bipolar">
+              <div class="zero"></div>
+              <div class="fill chg" id="curFill" style="left:50%;width:0"></div>
+            </div>
+          </div>
+          <div class="stat">
+            <div class="k">Temperature</div>
+            <div class="v num"><span id="vTemp">––</span><u>°C</u></div>
+            <div class="sub" id="vTempSub">&nbsp;</div>
+          </div>
+          <div class="stat">
+            <div class="k">Remaining</div>
+            <div class="v num"><span id="vAh">––</span><u>Ah</u></div>
+            <div class="sub" id="vAhSub">&nbsp;</div>
+          </div>
+          <div class="stat">
+            <div class="k">Cycles</div>
+            <div class="v num"><span id="vCyc">––</span></div>
+          </div>
+          <div class="stat">
+            <div class="k">Sensors</div>
+            <div class="v num"><span id="vSens">––</span></div>
+            <div class="sub" id="vSensSub">&nbsp;</div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- ================= RIGHT ================= -->
+    <div class="col">
+      <section class="card">
+        <h2>Cell voltages <span class="tag" id="cellTag">—</span></h2>
+        <div class="cellhead">
+          <div class="big num"><span id="cellAvg">––</span><u>V avg</u></div>
+          <div class="spread">
+            <b class="num" id="cellSpread">––</b>
+            spread · <span id="cellSpreadMv" class="num">––</span> mV
+          </div>
+        </div>
+        <div class="cellchart" id="cellChart">
+          <div class="avgl hidden" id="avgLine"></div>
+          <div class="empty" id="cellEmpty">Connect to a BMS, or press <b>Demo data</b></div>
+        </div>
+        <div class="cellfoot">
+          <span id="cellFootL">—</span>
+          <span id="cellFootR">—</span>
+        </div>
+
+        <div class="heat">
+          <canvas id="heat" width="600" height="46"></canvas>
+          <div class="cap"><span>cell balance over time</span><span id="heatCap">—</span></div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Current <span class="tag" id="curTag">last 5 min</span></h2>
+        <div class="chartbox">
+          <canvas id="curChart" width="900" height="132"></canvas>
+          <div class="chartempty" id="curEmpty">No samples yet</div>
+        </div>
+        <div class="chartlegend">
+          <span><i style="background:var(--acc)"></i>charge</span>
+          <span><i style="background:var(--acc2)"></i>discharge</span>
+          <span><i style="background:rgba(255,255,255,.3)"></i>zero</span>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>MOSFET switches <span class="tag">writes to the BMS</span></h2>
+        <div class="mosgrid">
+          <div class="mos" id="mosChg">
+            <div class="txt">
+              <div class="nm">Charge</div>
+              <div class="ds"><b id="mosChgState">OFF</b> <span id="mosChgHint"></span></div>
+            </div>
+            <button class="switch" id="swChg" role="switch" aria-checked="false" aria-label="Charge MOSFET" disabled></button>
+          </div>
+          <div class="mos" id="mosDsg">
+            <div class="txt">
+              <div class="nm">Discharge</div>
+              <div class="ds"><b id="mosDsgState">OFF</b> <span id="mosDsgHint"></span></div>
+            </div>
+            <button class="switch" id="swDsg" role="switch" aria-checked="false" aria-label="Discharge MOSFET" disabled></button>
+          </div>
+        </div>
+        <div class="mosnote" id="mosNote">Connect first. Toggling writes a single register; the BMS echoes the frame back as confirmation.</div>
+      </section>
+
+      <section class="card">
+        <h2>Protection <span class="tag" id="faultTag">—</span></h2>
+        <div class="faults" id="faults">
+          <div class="empty">No data yet.</div>
+        </div>
+      </section>
+
+      <details class="log">
+        <summary>Raw frames</summary>
+        <pre id="log">—</pre>
+      </details>
+    </div>
+  </div>
+  </div><!-- /dashView -->
+
+  <!-- ================= SETTINGS ================= -->
+  <section id="settingsView" class="hidden">
+    <div class="sethead">
+      <button class="btn" id="backBtn">← Dashboard</button>
+      <h2>Parameters</h2>
+      <span class="pill" id="authPill"><span class="dot"></span><span id="authText">locked</span></span>
+    </div>
+
+    <div class="card authcard" id="authCard">
+      <h2>Unlock <span class="tag">required</span></h2>
+      <p class="authnote">
+        Daly protects its parameters with a 6-digit code. This page reads the stored code from the
+        BMS and compares it here before it will write anything — the same check the official app
+        does, and like the official app it is a guard rail, not real security.
+      </p>
+      <div class="authrow">
+        <input id="pwInput" class="pw" type="password" inputmode="numeric" maxlength="12"
+               placeholder="123456" autocomplete="off" aria-label="Parameter password">
+        <button class="btn primary" id="unlockBtn" disabled="false">Unlock</button>
+      </div>
+      <p class="autherr hidden" id="authErr"></p>
+      <p class="authnote dim" id="authHint">Connect to a BMS first, or use Demo data.</p>
+    </div>
+
+    <div id="settingsBody" class="hidden">
+      <div class="card infocard">
+        <h2>Device <span class="tag">read only</span></h2>
+        <div class="inforow">
+          <div><span>Firmware</span><b id="infoSw">—</b></div>
+          <div><span>Hardware</span><b id="infoHw">—</b></div>
+          <div><span>Produced</span><b id="infoDate">—</b></div>
+          <div><span>Pack</span><b id="infoPack">—</b></div>
+        </div>
+      </div>
+
+      <div class="setwarn">
+        <b>These are protection limits.</b> Setting an over-voltage below the pack's resting voltage, or
+        an over-current below your load, will cut power when you least want it. Changes go straight
+        to the BMS — there is no undo.
+      </div>
+
+      <div id="groups"></div>
+
+      <div class="applybar" id="applyBar">
+        <div class="applyinfo"><b id="dirtyCount">0</b> <span id="dirtyLabel">changes</span></div>
+        <button class="btn" id="revertBtn" disabled>Revert</button>
+        <button class="btn primary" id="applyBtn" disabled>Apply</button>
+      </div>
+      <div id="applyLog" class="applylog"></div>
+    </div>
+  </section>
+</div>
+<div id="toast"></div>
+
+<script>
+"use strict";
+(function () {
+
+/* ============================================================
+   1. PROTOCOL  —  Daly BMS, Modbus RTU over BLE
+   ============================================================ */
+const ADDR = 0xD2;
+
+function crc16(bytes) {
+  let crc = 0xFFFF;
+  for (const b of bytes) {
+    crc ^= b;
+    for (let i = 0; i < 8; i++) crc = (crc & 1) ? (crc >> 1) ^ 0xA001 : crc >> 1;
+  }
+  return crc & 0xFFFF;
+}
+function readFrame(startReg, count) {
+  const b = [ADDR, 0x03, startReg >> 8, startReg & 0xff, count >> 8, count & 0xff];
+  const c = crc16(b);
+  return new Uint8Array([...b, c & 0xff, c >> 8]);
+}
+function writeFrame(reg, value) {
+  const b = [ADDR, 0x06, reg >> 8, reg & 0xff, value >> 8, value & 0xff];
+  const c = crc16(b);
+  return new Uint8Array([...b, c & 0xff, c >> 8]);
+}
+const FULL_READ = () => readFrame(0x0000, 0x003e);   // 62 regs -> 124 bytes
+const hex = (u8) => Array.from(u8).map(x => x.toString(16).padStart(2, "0")).join(" ").toUpperCase();
+
+// Pull one complete Modbus frame off a byte buffer. Handles read (0x03),
+// write echo (0x06), multi-write echo (0x10) and exception (0x8x).
+function extractFrame(buf) {
+  let i = buf.indexOf(ADDR);
+  if (i < 0) { buf.length = 0; return null; }
+  if (i > 0) buf.splice(0, i);
+  if (buf.length < 4) return null;
+  const fn = buf[1];
+  let total;
+  if (fn === 0x03) total = 3 + buf[2] + 2;
+  else if (fn === 0x06 || fn === 0x10) total = 8;
+  else if (fn & 0x80) total = 5;
+  else { buf.splice(0, 1); return null; }
+  if (buf.length < total) return null;
+  const frame = buf.slice(0, total);
+  buf.splice(0, total);
+  const got = frame[total - 2] | (frame[total - 1] << 8);
+  if (crc16(frame.slice(0, total - 2)) !== got) return null;   // corrupt -> drop
+  return { fn: fn & 0x7f, exception: !!(fn & 0x80), frame,
+           payload: fn === 0x03 ? frame.slice(3, total - 2) : null };
+}
+
+const u16 = (b, o) => (b[o] << 8) | b[o + 1];
+
+function decodeBlock(b) {
+  const nCells = Math.min(u16(b, 98), 32);
+  const nTemps = Math.min(u16(b, 100), 8);
+  const cells = [];
+  for (let i = 0; i < nCells; i++) cells.push(u16(b, i * 2) / 1000);
+  const temps = [];
+  for (let i = 0; i < nTemps; i++) temps.push(u16(b, 64 + i * 2) - 40);
+  return {
+    voltage: u16(b, 80) / 10,
+    current: (u16(b, 82) - 30000) / 10,          // + = discharge
+    soc: u16(b, 84) / 10,
+    maxCell: u16(b, 86) / 1000,
+    minCell: u16(b, 88) / 1000,
+    maxTemp: u16(b, 90) - 40,
+    minTemp: u16(b, 92) - 40,
+    state: ["stationary", "charging", "discharging"][u16(b, 94)] || "unknown",
+    remainingAh: u16(b, 96) / 10,
+    nCells, nTemps, cells, temps,
+    cycles: u16(b, 102),
+    balancing: u16(b, 104) === 1,
+    chargeMos: u16(b, 106) === 1,
+    dischargeMos: u16(b, 108) === 1,
+    avgCell: u16(b, 110) / 1000,
+    delta: u16(b, 112) / 1000,
+    power: u16(b, 114),
+    faults: [u16(b, 116), u16(b, 118), u16(b, 120), u16(b, 122)],
+  };
+}
+
+// Fault words 1-3, bit 0..15, straight from Daly's register map (0x3A-0x3C).
+// 0x3D (word 4) is reserved. "L1" = warning threshold, "L2" = protection trip.
+const FAULT_NAMES = [
+  ["Cell over-voltage L1","Cell over-voltage L2","Cell under-voltage L1","Cell under-voltage L2",
+   "Pack over-voltage L1","Pack over-voltage L2","Pack under-voltage L1","Pack under-voltage L2",
+   "Charge temp high L1","Charge temp high L2","Charge temp low L1","Charge temp low L2",
+   "Discharge temp high L1","Discharge temp high L2","Discharge temp low L1","Discharge temp low L2"],
+  ["Charge over-current L1","Charge over-current L2","Discharge over-current L1","Discharge over-current L2",
+   "SOC too high L1","SOC too high L2","SOC too low L1","SOC too low L2",
+   "Cell imbalance L1","Cell imbalance L2","Temp imbalance L1","Temp imbalance L2","","","",""],
+  ["Charge MOS over-temp","Discharge MOS over-temp","Charge MOS sensor fault","Discharge MOS sensor fault",
+   "Charge MOS stuck closed","Discharge MOS stuck closed","Charge MOS circuit fault","Charge MOS circuit fault",
+   "AFE chip fault","Cell sampling offline","Temp sensor fault","EEPROM fault",
+   "RTC fault","Precharge failed","Vehicle comms fault","Internal network fault"],
+];
+const HARD = /L2|stuck|circuit|fault|failed|offline|AFE/i;
+
+function faultList(faults) {
+  const out = [];
+  faults.forEach((mask, w) => {
+    if (!mask) return;
+    for (let bit = 0; bit < 16; bit++) {
+      if (!(mask & (1 << bit))) continue;
+      const name = (FAULT_NAMES[w] || [])[bit] || ("Fault word " + (w + 1) + " bit " + bit);
+      out.push({ name, hard: HARD.test(name) });
+    }
+  });
+  return out;
+}
+
+/* ============================================================
+   2. STATE
+   ============================================================ */
+const MAX_HIST = 300;
+let view = "dash";     // dash | settings
+const state = {
+  mode: "idle",          // idle | live | demo
+  settingsBusy: false,
+  sample: null,
+  prevSoc: null,
+  hist: [],              // {t, current, power}
+  cellHist: [],          // [cells...]
+  lastRx: 0,
+};
+
+/* ============================================================
+   3. UI HELPERS
+   ============================================================ */
+const $ = (id) => document.getElementById(id);
+const fmt = (v, d = 1) => (v === null || v === undefined || Number.isNaN(v)) ? "––" : v.toFixed(d);
+
+let toastT;
+function toast(msg, isErr) {
+  const t = $("toast");
+  t.textContent = msg;
+  t.className = "show" + (isErr ? " err" : "");
+  clearTimeout(toastT);
+  toastT = setTimeout(() => { t.className = ""; }, 3200);
+}
+
+let logLines = [];
+function log(msg) {
+  logLines.push(new Date().toLocaleTimeString() + "  " + msg);
+  if (logLines.length > 60) logLines = logLines.slice(-60);
+  $("log").textContent = logLines.join("\n");
+}
+
+/* ============================================================
+   4. RENDER
+   ============================================================ */
+const SOC_CIRC = 2 * Math.PI * 82;
+
+function render() {
+  const s = state.sample;
+  const live = !!s;
+
+  // ---- gauge ----
+  if (live) {
+    $("socVal").textContent = Math.round(s.soc);
+    const off = SOC_CIRC * (1 - Math.max(0, Math.min(1, s.soc / 100)));
+    $("socArc").setAttribute("stroke-dashoffset", off.toFixed(1));
+    $("socArc").setAttribute("stroke-dasharray", SOC_CIRC.toFixed(1));
+  }
+
+  // ---- state pill ----
+  const sp = $("statePill");
+  sp.className = "state " + (live ? s.state : "stationary");
+  sp.textContent = !live ? "idle"
+    : s.state === "charging" ? "charging"
+    : s.state === "discharging" ? "discharging"
+    : "idle";
+
+  // ---- stats ----
+  $("vVolt").textContent = live ? fmt(s.voltage, 1) : "––";
+  $("vPow").textContent  = live ? Math.round(Math.abs(s.power || s.voltage * s.current)) : "––";
+  $("vCur").textContent  = live ? fmt(Math.abs(s.current), 1) : "––";
+  $("curDir").textContent = !live ? "" : s.current < -0.2 ? "(charging)" : s.current > 0.2 ? "(discharging)" : "(idle)";
+  $("vTemp").textContent = live ? fmt((s.maxTemp + s.minTemp) / 2, 0) : "––";
+  $("vTempSub").textContent = live
+    ? (s.minTemp === s.maxTemp ? s.nTemps + " sensor" + (s.nTemps === 1 ? "" : "s") : "min " + s.minTemp + " · max " + s.maxTemp)
+    : "\u00a0";
+  $("vAh").textContent = live ? fmt(s.remainingAh, 1) : "––";
+  $("vAhSub").textContent = live ? s.nCells + "S pack" : "\u00a0";
+  $("vCyc").textContent = live ? s.cycles : "––";
+  $("vSens").textContent = live ? s.nCells + " / " + s.nTemps : "––";
+  $("vSensSub").textContent = live ? "cells / temps" : "\u00a0";
+
+  // ---- bipolar current bar (± scale, auto-ranged) ----
+  if (live) {
+    const scale = Math.max(20, Math.abs(s.current) * 1.35);
+    const frac = Math.min(0.5, Math.abs(s.current) / scale / 2);
+    const f = $("curFill");
+    if (s.current < 0) { f.className = "fill chg"; f.style.left = (50 - frac * 100) + "%"; f.style.width = (frac * 100) + "%"; }
+    else               { f.className = "fill dsg"; f.style.left = "50%"; f.style.width = (frac * 100) + "%"; }
+  }
+
+  // ---- badges ----
+  const bc = $("bChg"), bd = $("bDsg"), bb = $("bBal");
+  bc.className = "badge " + (live && s.chargeMos ? "yes" : "no");
+  bd.className = "badge " + (live && s.dischargeMos ? "yes" : "no");
+  bb.className = "badge " + (live && s.balancing ? "balyes" : "off");
+
+  // ---- age tag ----
+  if (live) {
+    const age = (Date.now() - state.lastRx) / 1000;
+    $("ageTag").textContent = state.mode === "demo"
+      ? "simulated"
+      : (age < 2 ? "updating" : age.toFixed(0) + "s ago");
+    $("liveTag").textContent = state.mode === "demo" ? "demo" : "1 Hz poll";
+  }
+
+  document.body.classList.toggle("nodata", !live);
+  renderCells(s);
+  renderFaults(s);
+  renderMasfet(s);
+  drawCurrent(s);
+  drawHeat();
+}
+
+// ---- cell bar chart ----
+function renderCells(s) {
+  const chart = $("cellChart");
+  const empty = $("cellEmpty");
+  const line = $("avgLine");
+
+  if (!s || !s.cells || !s.cells.length) {
+    empty.classList.remove("hidden");
+    line.classList.add("hidden");
+    Array.from(chart.querySelectorAll(".bar")).forEach(b => b.remove());
+    $("cellAvg").textContent = "––";
+    $("cellSpread").textContent = "––";
+    $("cellSpreadMv").textContent = "––";
+    $("cellTag").textContent = "no data";
+    return;
+  }
+  empty.classList.add("hidden");
+
+  const cells = s.cells;
+  const avg = cells.reduce((a, b) => a + b, 0) / cells.length;
+  const lo = Math.min(...cells), hi = Math.max(...cells);
+  const pad = Math.max(0.012, (hi - lo) * 0.3);
+  let floor = lo - pad, ceil = hi + pad;
+  if (ceil - floor < 0.035) { const c = (hi + lo) / 2; floor = c - 0.0175; ceil = c + 0.0175; }
+
+  // keep existing bar nodes, add/remove as needed
+  const bars = Array.from(chart.querySelectorAll(".bar"));
+  while (bars.length < cells.length) {
+    const b = document.createElement("div");
+    b.className = "bar";
+    b.innerHTML = '<span class="tip"></span>';
+    chart.appendChild(b);
+    bars.push(b);
+  }
+  while (bars.length > cells.length) bars.pop().remove();
+
+  bars.forEach((b, i) => {
+    const v = cells[i];
+    const dev = v - avg;
+    const h = Math.max(4, ((v - floor) / (ceil - floor)) * 100);
+    const ad = Math.abs(dev);
+    const col = ad < 0.010 ? "linear-gradient(180deg,#3ff0b0,#17a87a)"
+              : ad < 0.030 ? "linear-gradient(180deg,#ffd166,#e09b18)"
+              :              "linear-gradient(180deg,#ff6b78,#c2202f)";
+    b.style.height = h.toFixed(1) + "%";
+    b.style.background = col;
+    b.dataset.i = i + 1;
+    const tip = b.querySelector(".tip");
+    tip.textContent = "cell " + (i + 1) + " · " + (v * 1000).toFixed(0) + " mV · " +
+      (dev >= 0 ? "+" : "") + (dev * 1000).toFixed(0) + " mV";
+    // keep the tooltip inside the card on the outermost bars
+    tip.style.left = i === 0 ? "0" : (i === cells.length - 1 ? "auto" : "50%");
+    tip.style.right = i === cells.length - 1 ? "0" : "auto";
+    tip.style.transform = (i === 0 || i === cells.length - 1) ? "none" : "translateX(-50%)";
+    b.title = "cell " + (i + 1) + ": " + (v * 1000).toFixed(0) + " mV";
+  });
+
+  const pct = Math.max(0, Math.min(100, ((avg - floor) / (ceil - floor)) * 100));
+  // Bar heights are % of the content box, so position the avg line in px
+  // against that same box (container height minus its top padding) — using a
+  // percentage offset here would resolve against the padding box and drift.
+  const padTop = parseFloat(window.getComputedStyle(chart).paddingTop) || 0;
+  const barArea = (chart.clientHeight || 186) - padTop;
+  line.classList.remove("hidden");
+  line.classList.toggle("hi", pct > 88);
+  line.style.top = "auto";
+  line.style.bottom = (pct / 100 * barArea).toFixed(1) + "px";
+
+  $("cellAvg").textContent = avg.toFixed(3);
+  const spread = (hi - lo);
+  $("cellSpread").textContent = spread.toFixed(3);
+  $("cellSpreadMv").textContent = (spread * 1000).toFixed(0);
+  $("cellTag").textContent = cells.length + " cells · axis auto-scaled";
+  $("cellFootL").textContent = "min " + (lo * 1000).toFixed(0) + " mV";
+  $("cellFootR").textContent = "max " + (hi * 1000).toFixed(0) + " mV";
+}
+
+// ---- heatmap of cell spread over time ----
+function drawHeat() {
+  const cv = $("heat");
+  if (!cv || !cv.getContext) return;
+  const ctx = cv.getContext("2d");
+  if (!ctx) return;
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  const w = cv.clientWidth || 600, h = 46;
+  if (cv.width !== Math.round(w * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, w, h);
+
+  const hist = state.cellHist;
+  if (!hist.length) {
+    $("heatCap").textContent = "—";
+    return;
+  }
+  const nCells = hist[0].length;
+  const cols = Math.min(hist.length, 120);
+  // Normalise to the worst deviation actually seen in the window (floor 20 mV),
+  // otherwise a worn pack just paints the whole strip solid red.
+  let peak = 0;
+  for (let i = hist.length - cols; i < hist.length; i++) {
+    const sn = hist[i];
+    const a = sn.reduce((p, q) => p + q, 0) / sn.length;
+    for (const v of sn) peak = Math.max(peak, Math.abs(v - a));
+  }
+  const span = Math.max(0.020, peak);
+  const cw = w / cols, rh = h / nCells;
+  for (let c = 0; c < cols; c++) {
+    const snap = hist[hist.length - cols + c];
+    const avg = snap.reduce((a, b) => a + b, 0) / snap.length;
+    for (let r = 0; r < nCells; r++) {
+      const d = Math.abs(snap[r] - avg);
+      const t = Math.min(1, d / span);
+      ctx.fillStyle = t < 0.02 ? "rgba(37,227,163,.55)"
+        : "rgba(" + Math.round(37 + t * 218) + "," + Math.round(227 - t * 150) + "," + Math.round(163 - t * 90) + "," + (0.35 + t * 0.6) + ")";
+      ctx.fillRect(c * cw, r * rh, Math.max(1, cw - 0.6), Math.max(1, rh - 0.6));
+    }
+  }
+  $("heatCap").textContent = cols + " s · worst ±" + Math.round(peak * 1000) + " mV";
+}
+
+// ---- current history ----
+function drawCurrent(s) {
+  const cv = $("curChart");
+  if (!cv || !cv.getContext) return;
+  const ctx = cv.getContext("2d");
+  if (!ctx) return;
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  const w = cv.clientWidth || 900, h = 132;
+  if (cv.width !== Math.round(w * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, w, h);
+
+  const hist = state.hist;
+  const ce = $("curEmpty");
+  if (ce) ce.classList.toggle("hidden", hist.length >= 2);
+  if (hist.length < 2) { $("curTag").textContent = "waiting"; return; }
+
+  const vals = hist.map(p => p.current);
+  const maxAbs = Math.max(10, ...vals.map(Math.abs)) * 1.15;
+  const mid = h / 2, sc = (h / 2 - 8) / maxAbs;
+
+  // grid
+  ctx.strokeStyle = "rgba(255,255,255,.06)";
+  ctx.lineWidth = 1;
+  for (let i = 0; i <= 4; i++) {
+    const y = (h / 4) * i;
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+  }
+  // zero line
+  ctx.strokeStyle = "rgba(255,255,255,.28)";
+  ctx.beginPath(); ctx.moveTo(0, mid); ctx.lineTo(w, mid); ctx.stroke();
+
+  const x = (i) => (i / Math.max(1, vals.length - 1)) * w;
+  const y = (v) => mid - v * sc;
+
+  // split into charge (<0) / discharge (>=0) segments
+  const segs = [];
+  let cur = { sign: vals[0] < 0 ? -1 : 1, pts: [] };
+  vals.forEach((v, i) => {
+    const sign = v < 0 ? -1 : 1;
+    if (sign !== cur.sign) { segs.push(cur); cur = { sign, pts: [i - 1] }; }
+    cur.pts.push(i);
+  });
+  segs.push(cur);
+
+  segs.forEach(sg => {
+    if (sg.pts.length < 2) return;
+    const grd = ctx.createLinearGradient(0, mid, 0, sg.sign < 0 ? h : 0);
+    grd.addColorStop(0, sg.sign < 0 ? "rgba(37,227,163,.45)" : "rgba(55,200,255,.45)");
+    grd.addColorStop(1, sg.sign < 0 ? "rgba(37,227,163,.02)" : "rgba(55,200,255,.02)");
+    ctx.beginPath();
+    ctx.moveTo(x(sg.pts[0]), mid);
+    sg.pts.forEach(i => ctx.lineTo(x(i), y(vals[i])));
+    ctx.lineTo(x(sg.pts[sg.pts.length - 1]), mid);
+    ctx.closePath();
+    ctx.fillStyle = grd; ctx.fill();
+
+    ctx.beginPath();
+    sg.pts.forEach((i, k) => k ? ctx.lineTo(x(i), y(vals[i])) : ctx.moveTo(x(i), y(vals[i])));
+    ctx.strokeStyle = sg.sign < 0 ? "#25e3a3" : "#37c8ff";
+    ctx.lineWidth = 2; ctx.lineJoin = "round"; ctx.stroke();
+  });
+
+  $("curTag").textContent = "±" + Math.round(maxAbs) + " A scale";
+}
+
+// ---- faults ----
+function renderFaults(s) {
+  const box = $("faults");
+  if (!s) { box.innerHTML = '<div class="empty">No data yet.</div>'; $("faultTag").textContent = "—"; return; }
+  const list = faultList(s.faults);
+  $("faultTag").textContent = list.length ? list.length + " active" : "all clear";
+  if (!list.length) {
+    box.innerHTML = '<div class="allgood"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>No active protection flags</div>';
+    return;
+  }
+  box.innerHTML = list
+    .sort((a, b) => (b.hard ? 1 : 0) - (a.hard ? 1 : 0))
+    .map(f => '<span class="fault' + (f.hard ? "" : " warn") + '">' + f.name + "</span>")
+    .join("");
+}
+
+// ---- MOSFET panel ----
+function renderMasfet(s) {
+  const on = state.mode !== "idle" && !!s;
+  const chg = on && s.chargeMos, dsg = on && s.dischargeMos;
+  $("swChg").disabled = !on; $("swDsg").disabled = !on;
+  $("swChg").setAttribute("aria-checked", chg ? "true" : "false");
+  $("swDsg").setAttribute("aria-checked", dsg ? "true" : "false");
+  $("mosChg").className = "mos" + (chg ? " on" : "");
+  $("mosDsg").className = "mos" + (dsg ? " on" : "");
+  $("mosChgState").textContent = on ? (chg ? "ON" : "OFF") : "—";
+  $("mosDsgState").textContent = on ? (dsg ? "ON" : "OFF") : "—";
+  $("mosChgHint").textContent = on ? "· tap to switch" : "";
+  $("mosDsgHint").textContent = on ? "· tap to switch" : "";
+  $("mosNote").textContent = state.mode === "demo"
+    ? "Demo mode — switches are simulated locally, nothing is transmitted."
+    : state.mode === "live"
+      ? "One tap switches it. The page re-reads to confirm; if it didn't take, the switch snaps back."
+      : "Connect first. Then one tap switches either FET.";
+}
+
+/* ============================================================
+   5. SAMPLE HANDLING
+   ============================================================ */
+function pushSample(s) {
+  state.sample = s;
+  state.lastRx = Date.now();
+  state.hist.push({ t: state.lastRx, current: s.current, power: s.power });
+  if (state.hist.length > MAX_HIST) state.hist.shift();
+  if (s.cells && s.cells.length) {
+    state.cellHist.push(s.cells.slice());
+    if (state.cellHist.length > MAX_HIST) state.cellHist.shift();
+  }
+}
+
+/* ============================================================
+   6. BLE TRANSPORT
+   ============================================================ */
+let ble = { device: null, rx: null, tx: null, timer: null, buf: [] };
+let inflight = null;                 // the single outstanding request
+let chain = Promise.resolve();       // serialises everything talking to the BMS
+
+// One request at a time, always. Two overlapping reads would let a stale 0x03
+// frame answer the wrong promise (e.g. the password block resolving a settings
+// read), so every exchange goes through this queue.
+function serial(fn) {
+  const run = chain.then(fn);
+  chain = run.then(() => {}, () => {});
+  return run;
+}
+
+function settle(value) {
+  if (!inflight) return;
+  const p = inflight;
+  inflight = null;
+  clearTimeout(p.timer);
+  p.resolve(value);
+}
+
+function request(kind, bytes, timeout, expectLen) {
+  return serial(() => new Promise((resolve, reject) => {
+    if (!ble.tx) { reject(new Error("not connected")); return; }
+    const timer = setTimeout(() => {
+      if (inflight && inflight.timer === timer) { inflight = null; reject(new Error("no reply")); }
+    }, timeout || 3000);
+    inflight = { kind, resolve, timer, expectLen: kind === "read" ? expectLen : 0 };
+    const w = ble.tx.properties.writeWithoutResponse
+      ? ble.tx.writeValueWithoutResponse(bytes)
+      : ble.tx.writeValue(bytes);
+    w.catch((e) => {
+      if (inflight && inflight.timer === timer) { inflight = null; clearTimeout(timer); reject(e); }
+    });
+  }));
+}
+const readBlock = (start, count, to) => request("read", readFrame(start, count), to, count * 2);
+const writeReg = (reg, val, to) => request("write", writeFrame(reg, val), to, 0);
+
+// A silent write is not a failed write. Many Daly firmwares never echo 0x06, so the
+// only trustworthy confirmation is reading the register back — see verify in applyChanges.
+async function writeQuiet(reg, val, holdMs) {
+  try {
+    await writeReg(reg, val, holdMs || 500);
+    return "ack";
+  } catch (e) {
+    if (/no reply/.test(e.message)) return "silent";
+    throw e;
+  }
+}
+
+function onBytes(u8) {
+  for (let i = 0; i < u8.byteLength; i++) ble.buf.push(u8.getUint8(i));
+  if (ble.buf.length > 1024) ble.buf.splice(0, ble.buf.length - 512);   // stuck stream guard
+  let f;
+  while ((f = extractFrame(ble.buf))) handleFrame(f);
+}
+
+function handleFrame(f) {
+  if (f.exception) {
+    log("BMS refused fn 0x" + f.fn.toString(16) + " code " + f.frame[2]);
+    settle(null);
+    return;
+  }
+  if (f.fn === 0x03) {
+    if (inflight && inflight.kind === "read") { settle(f.payload); return; }
+    // unsolicited status frame — treat it as a sample
+    try { pushSample(decodeBlock(f.payload)); render(); } catch (e) { log("decode error skipped"); }
+    return;
+  }
+  if (f.fn === 0x06) {
+    log("write ok: " + hex(f.frame));
+    if (inflight && inflight.kind === "write") settle(true);
+  }
+}
+
+// Find a notify/write pair by walking the discovered services — this is more
+// robust than deriving a service UUID from a characteristic UUID.
+async function findChars(server) {
+  const services = await server.getPrimaryServices();
+  for (const svc of services) {
+    let chars;
+    try { chars = await svc.getCharacteristics(); } catch (e) { continue; }
+    const rx = chars.find(c => c.properties.notify || c.properties.indicate);
+    const tx = chars.find(c => c.properties.writeWithoutResponse || c.properties.write);
+    if (rx && tx) return { rx, tx, service: svc.uuid };
+  }
+  return null;
+}
+
+async function doConnect() {
+  const bt = navigator.bluetooth;
+  if (!bt) {
+    const local = location.protocol === "file:" || location.protocol === "content:";
+    toast(local
+      ? "Opened as a local file without Bluetooth access — open it in Chrome itself (Downloads → tap the file), not a file previewer."
+      : "This browser has no Web Bluetooth — use Chrome or Edge (Android or desktop).", true);
+    log("navigator.bluetooth missing · protocol " + location.protocol + " · secure " + window.isSecureContext);
+    return;
+  }
+  const btn = $("connectBtn");
+  btn.disabled = true; btn.textContent = "Connecting…";
+  try {
+    let device;
+    const opts = {
+      filters: [{ namePrefix: "DL-" }, { namePrefix: "Daly" }],
+      optionalServices: [
+        "0000fff0-0000-1000-8000-00805f9b34fb",
+        "0000ff00-0000-1000-8000-00805f9b34fb",
+      ],
+    };
+    try { device = await bt.requestDevice(opts); }
+    catch (e) {
+      if (e.name !== "NotFoundError") throw e;
+      toast("No DL- device found, showing all nearby devices…");
+      device = await bt.requestDevice({ acceptAllDevices: true, optionalServices: opts.optionalServices });
+    }
+
+    log("device: " + (device.name || "(unnamed)") + " · " + device.id);
+    const server = await device.gatt.connect();
+    const pair = await findChars(server);
+    if (!pair) throw new Error("No notify/write characteristic pair found — is the official app still connected?");
+    log("service " + pair.service + " · rx " + pair.rx.uuid.slice(4, 8) + " tx " + pair.tx.uuid.slice(4, 8));
+
+    ble.device = device; ble.rx = pair.rx; ble.tx = pair.tx; ble.buf = [];
+    await pair.rx.startNotifications();
+    pair.rx.addEventListener("characteristicvaluechanged", (ev) => onBytes(ev.target.value));
+
+    state.mode = "live";
+    state.hist = []; state.cellHist = [];
+    clearInterval(ble.timer);
+    ble.timer = setInterval(poll, 1000);
+    await poll();
+
+    device.addEventListener("gattserverdisconnected", () => {
+      clearInterval(ble.timer); ble.timer = null;
+      state.mode = "idle";
+      setConn("off", "disconnected");
+      $("connectBtn").textContent = "Connect";
+      lockSettings();
+      if (view === "settings") refreshAuthUI();
+      toast("BMS disconnected");
+      render();
+    });
+
+    setConn("on", device.name || "connected");
+    $("connectBtn").textContent = "Disconnect";
+    if (view === "settings") refreshAuthUI();
+    $("demoBtn").textContent = "Demo data";
+    log("read 0x0000 x62 -> " + hex(FULL_READ()));
+    toast("Connected to " + (device.name || "BMS"));
+    render();
+  } catch (e) {
+    log("connect failed: " + e.message);
+    toast(e.message || "Connection failed", true);
+  } finally {
+    btn.disabled = false; btn.textContent = "Connect";
+  }
+}
+
+async function poll() {
+  if (!ble.tx || inflight || state.settingsBusy || view === "settings") return;
+  try { pushSample(decodeBlock(await readBlock(0x0000, 0x003e))); render(); }
+  catch (e) { log("poll: " + e.message); }
+}
+
+async function setMosfet(which, turnOn) {
+  const reg = which === "charge" ? 0x00a5 : 0x00a6;
+  const label = which === "charge" ? "Charge" : "Discharge";
+  const key = which === "charge" ? "chargeMos" : "dischargeMos";
+
+  if (state.mode === "demo") {
+    demoMos[which] = turnOn;
+    if (state.sample) state.sample[key] = turnOn;
+    render();
+    toast("Demo: " + label + " MOSFET " + (turnOn ? "on" : "off") + " (not transmitted)");
+    return;
+  }
+  if (state.mode !== "live" || !ble.tx) { toast("Not connected", true); return; }
+
+  // One click, no dialog. Flip the UI immediately, then reconcile: the echo is
+  // the only ack the BMS gives, and the next 1 Hz read shows the real state.
+  if (state.sample) state.sample[key] = turnOn;
+  render();
+
+  const sw = which === "charge" ? $("swChg") : $("swDsg");
+  sw.classList.add("busy");
+  try {
+    log("write " + hex(writeFrame(reg, turnOn ? 1 : 0)));
+    await writeQuiet(reg, turnOn ? 1 : 0, 600);
+    await new Promise((r) => setTimeout(r, 280));
+    pushSample(decodeBlock(await readBlock(0x0000, 0x003e)));   // the truth
+    render();
+    const now = which === "charge" ? state.sample.chargeMos : state.sample.dischargeMos;
+    if (now === turnOn) toast(label + " " + (turnOn ? "on" : "off"));
+    else toast(label + " didn't change — this firmware may ignore the switch", true);
+  } catch (e) {
+    toast("Switch failed: " + e.message, true);
+  } finally {
+    sw.classList.remove("busy");
+  }
+}
+
+/* ============================================================
+   7. DEMO SIMULATION
+   ============================================================ */
+let demoTimer = null, demoPhase = 0;
+const demoMos = { charge: true, discharge: true };
+
+function demoStep() {
+  demoPhase += 0.055;
+  const t = demoPhase;
+  // 16S LiFePO4, charge/discharge cycling around 55% SOC
+  const charging = Math.sin(t / 3.1) < 0;
+  const mag = 18 + 14 * Math.abs(Math.sin(t / 5.3));
+  const current = (charging ? -1 : 1) * mag;
+  const soc = 55 + 9 * Math.sin(t / 3.1 - 1.2);
+  const packV = 16 * (3.30 + 0.055 * Math.sin(t / 3.1 - 1.2)) - current * 0.012;
+
+  const drift = (i) => Math.sin(t / 7 + i * 1.7) * 0.006 + Math.sin(i * 3.1) * 0.004;
+  const cells = [];
+  for (let i = 0; i < 16; i++) cells.push(+(packV / 16 + drift(i) + (i === 6 ? 0.021 : 0)).toFixed(4));
+
+  const now = Date.now();
+  state.sample = {
+    voltage: +packV.toFixed(1),
+    current: +current.toFixed(1),
+    soc: +Math.max(0, Math.min(100, soc)).toFixed(1),
+    maxCell: Math.max(...cells), minCell: Math.min(...cells),
+    maxTemp: Math.round(22 + 3 * Math.abs(Math.sin(t / 9))),
+    minTemp: Math.round(20 + 2 * Math.abs(Math.sin(t / 9))),
+    state: charging ? "charging" : "discharging",
+    remainingAh: +(280 * soc / 100).toFixed(1),
+    nCells: 16, nTemps: 2, cells,
+    temps: [22, 21],
+    cycles: 213,
+    balancing: Math.abs(soc - 55) < 4 && charging,
+    chargeMos: demoMos.charge,
+    dischargeMos: demoMos.discharge,
+    avgCell: +(cells.reduce((a, b) => a + b, 0) / 16).toFixed(4),
+    delta: +(Math.max(...cells) - Math.min(...cells)).toFixed(4),
+    power: Math.round(Math.abs(packV * current)),
+    faults: [0, 0, 0, 0],
+  };
+  state.lastRx = now;
+  state.hist.push({ t: now, current: state.sample.current, power: state.sample.power });
+  if (state.hist.length > MAX_HIST) state.hist.shift();
+  state.cellHist.push(cells.slice());
+  if (state.cellHist.length > MAX_HIST) state.cellHist.shift();
+  render();
+}
+
+function setConn(kind, text) {
+  const p = $("connPill");
+  p.className = "pill" + (kind === "on" ? " on" : kind === "demo" ? " demo" : "");
+  $("connText").textContent = text;
+}
+
+
+/* ============================================================
+   7b. SETTINGS  —  parameter block 0x80..0xA8, password at 0xC9
+   ============================================================ */
+// Scale model for every register: display = (raw - add) / mul
+const GROUPS = {
+  cells: { l: "Cell protection",
+    n: "These are the values the official app shows. Each has a second limit stored next to it that the app never displays — see Undocumented limits at the bottom." },
+  packv: { l: "Pack voltage",
+    n: "The app calls these \u201csum volt high/low protect\u201d." },
+  cur:   { l: "Current",
+    n: "Magnitudes in amps. Daly counts charging current as negative, so the charge value is stored below the 30000 offset." },
+  temp:  { l: "Temperature",
+    n: "Spread alarms never cut the FETs, per Daly's own control-strategy note." },
+  bal:   { l: "Balancing", n: "" },
+  misc:  { l: "Pack & calibration",
+    n: "Rated capacity drives the SOC percentage. Writing SOC recalibrates the gauge only." },
+  hidden: { l: "Undocumented limits",
+    n: "Every protection has a second value stored beside it that the app never shows. It is always further from nominal than the protection — most likely a factory ceiling if the setting is ignored. Shown read-only: I don't know their semantics well enough to let you write them." },
+};
+
+const FIELDS = [
+  // ---- exactly what the official app exposes ("protection") ----
+  { reg: 0x8c, g: "cells", l: "Cell over-voltage protection", u: "mV", mul: 1, add: 0, min: 2000, max: 4500 },
+  { reg: 0x8e, g: "cells", l: "Cell under-voltage protection", u: "mV", mul: 1, add: 0, min: 1200, max: 3500 },
+  { reg: 0xa0, g: "cells", l: "Cell imbalance protection", u: "mV", mul: 1, add: 0, min: 10, max: 1000 },
+
+  { reg: 0x90, g: "packv", l: "Pack over-voltage protection", u: "V", mul: 10, add: 0, min: 10, max: 100, dec: 1 },
+  { reg: 0x92, g: "packv", l: "Pack under-voltage protection", u: "V", mul: 10, add: 0, min: 10, max: 100, dec: 1 },
+
+  { reg: 0x94, g: "cur", l: "Charge over-current protection", u: "A", mode: "current", neg: true, min: 0, max: 500, dec: 1 },
+  { reg: 0x96, g: "cur", l: "Discharge over-current protection", u: "A", mode: "current", neg: false, min: 0, max: 500, dec: 1 },
+
+  { reg: 0x98, g: "temp", l: "Charge over-temp protection", u: "°C", mul: 1, add: 40, min: -40, max: 100 },
+  { reg: 0x9a, g: "temp", l: "Charge under-temp protection", u: "°C", mul: 1, add: 40, min: -40, max: 100 },
+  { reg: 0x9c, g: "temp", l: "Discharge over-temp protection", u: "°C", mul: 1, add: 40, min: -40, max: 100 },
+  { reg: 0x9e, g: "temp", l: "Discharge under-temp protection", u: "°C", mul: 1, add: 40, min: -40, max: 100 },
+  { reg: 0xa2, g: "temp", l: "Temperature spread protection", u: "°C", mul: 1, add: 0, min: 1, max: 50 },
+  { reg: 0xa8, g: "temp", l: "Fan-on temperature", u: "°C", mul: 1, add: 40, min: -40, max: 150 },
+
+  { reg: 0xa3, g: "bal", l: "Balancing starts above", u: "mV", mul: 1, add: 0, min: 3000, max: 3700 },
+  { reg: 0xa4, g: "bal", l: "Balancing opens above spread", u: "mV", mul: 1, add: 0, min: 5, max: 200 },
+
+  { reg: 0x80, g: "misc", l: "Rated capacity", u: "Ah", mul: 10, add: 0, min: 1, max: 1000, dec: 1 },
+  { reg: 0x81, g: "misc", l: "Cell reference voltage", u: "mV", mul: 1, add: 0, min: 2000, max: 4000 },
+  { reg: 0x89, g: "misc", l: "Battery chemistry", u: "", mul: 1, add: 0, min: 0, max: 2, t: "select",
+    opts: [[0, "LiFePO4"], [1, "Li-ion / ternary"], [2, "LTO"]] },
+  { reg: 0x8a, g: "misc", l: "Sleep wait time", u: "s", mul: 1, add: 0, min: 10, max: 65000 },
+  { reg: 0xa7, g: "misc", l: "State of charge (write)", u: "%", mul: 10, add: 0, min: 0, max: 105, dec: 1 },
+
+  // ---- stored right next to each protection, never shown by the app ----
+  { reg: 0x8b, g: "hidden", ro: true, l: "Cell over-voltage", u: "mV", mul: 1, add: 0 },
+  { reg: 0x8d, g: "hidden", ro: true, l: "Cell under-voltage", u: "mV", mul: 1, add: 0 },
+  { reg: 0x9f, g: "hidden", ro: true, l: "Cell imbalance", u: "mV", mul: 1, add: 0 },
+  { reg: 0x8f, g: "hidden", ro: true, l: "Pack over-voltage", u: "V", mul: 10, add: 0, dec: 1 },
+  { reg: 0x91, g: "hidden", ro: true, l: "Pack under-voltage", u: "V", mul: 10, add: 0, dec: 1 },
+  { reg: 0x93, g: "hidden", ro: true, l: "Charge over-current", u: "A", mode: "current", neg: true, dec: 1 },
+  { reg: 0x95, g: "hidden", ro: true, l: "Discharge over-current", u: "A", mode: "current", neg: false, dec: 1 },
+  { reg: 0x97, g: "hidden", ro: true, l: "Charge over-temp", u: "°C", mul: 1, add: 40 },
+  { reg: 0x99, g: "hidden", ro: true, l: "Charge under-temp", u: "°C", mul: 1, add: 40 },
+  { reg: 0x9b, g: "hidden", ro: true, l: "Discharge over-temp", u: "°C", mul: 1, add: 40 },
+  { reg: 0x9d, g: "hidden", ro: true, l: "Discharge under-temp", u: "°C", mul: 1, add: 40 },
+  { reg: 0xa1, g: "hidden", ro: true, l: "Temperature spread", u: "°C", mul: 1, add: 0,
+    note: "the one pair where this value sits below the protection" },
+
+  { reg: 0x82, g: "hidden", ro: true, l: "Collection boards", u: "" },
+  { reg: 0x83, g: "hidden", ro: true, l: "Board 1 cells", u: "" },
+  { reg: 0x84, g: "hidden", ro: true, l: "Board 2 cells", u: "" },
+  { reg: 0x85, g: "hidden", ro: true, l: "Board 3 cells", u: "" },
+  { reg: 0x86, g: "hidden", ro: true, l: "Board 1 temp sensors", u: "" },
+  { reg: 0x87, g: "hidden", ro: true, l: "Board 2 temp sensors", u: "" },
+  { reg: 0x88, g: "hidden", ro: true, l: "Board 3 temp sensors", u: "" },
+];
+
+const S = { unlocked: false, expected: null, vals: {}, orig: {}, dirty: new Set(), built: false };
+
+// Current limits are stored with the same 30000 offset as live current, which
+// means charge limits sit BELOW 30000 (Daly's current is negative when charging).
+// Show the magnitude, and write back with the correct sign for the direction.
+const toRaw = (f, v) => f.mode === "current"
+  ? 30000 + (f.neg ? -1 : 1) * Math.round(v * 10)
+  : Math.round(v * (f.mul || 1) + (f.add || 0));
+const fromRaw = (f, r) => f.mode === "current"
+  ? Math.abs(r - 30000) / 10
+  : (r - (f.add || 0)) / (f.mul || 1);
+
+function demoParams() {
+  const b = new Uint8Array(82);
+  const put = (reg, v) => { const o = (reg - 0x80) * 2; b[o] = (v >> 8) & 255; b[o + 1] = v & 255; };
+  // mirrors a real 16S 23.2 Ah LFP pack as reported by the official app
+  Object.entries({
+    0x80: 232, 0x81: 3200, 0x82: 1, 0x83: 16, 0x84: 0, 0x85: 0, 0x86: 1, 0x87: 0, 0x88: 0,
+    0x89: 0, 0x8a: 3600,
+    0x8b: 3650, 0x8c: 3600,    // cell high: hidden 3.65 / app protection 3.60
+    0x8d: 2300, 0x8e: 2870,    // cell low
+    0x8f: 576,  0x90: 576,     // pack high
+    0x91: 376,  0x92: 460,     // pack low
+    0x93: 29520, 0x94: 29800,  // charge OC: hidden 48 A / app protection 20 A
+    0x95: 30480, 0x96: 30400,  // discharge OC: hidden 48 A / app protection 40 A
+    0x97: 100,  0x98: 80,      // charge over-temp
+    0x99: 5,    0x9a: 40,      // charge under-temp
+    0x9b: 105,  0x9c: 80,      // discharge over-temp
+    0x9d: 5,    0x9e: 35,      // discharge under-temp
+    0x9f: 500,  0xa0: 200,     // imbalance
+    0xa1: 10,   0xa2: 15,      // temperature spread
+    0xa3: 3400, 0xa4: 20, 0xa7: 998, 0xa8: 87,
+  }).forEach(([r, v]) => put(Number(r), v));
+  return b;
+}
+
+let demoBuf = demoParams();   // demo mode keeps its own writable copy
+
+async function readParams() {
+  if (state.mode === "demo") return demoBuf;
+  return await readBlock(0x0080, 0x0029, 4000);   // 0x80..0xA8, 82 bytes
+}
+
+async function readPassword() {
+  if (state.mode === "demo") return "123456";
+  try {
+    const b = await readBlock(0x00c9, 0x0003, 3000);   // 3 regs = 6 bytes, ASCII
+    return Array.from(b).filter(x => x >= 32 && x < 127).map(x => String.fromCharCode(x)).join("").trim();
+  } catch (e) {
+    log("password register unreadable: " + e.message);
+    return "";
+  }
+}
+
+async function readInfo() {
+  if (state.mode === "demo") return { sw: "DALY-SW-30KE", hw: "DALY-HW-1.0", date: "240315" };
+  try {
+    const b = await readBlock(0x00a9, 0x0020, 4000);   // 0xA9..0xC8, 64 bytes
+    const str = (a, z) => Array.from(b.slice(a, z)).filter(x => x >= 32 && x < 127)
+      .map(x => String.fromCharCode(x)).join("").trim();
+    return { sw: str(0, 16), hw: str(16, 32), date: str(32, 48) };
+  } catch (e) { return { sw: "", hw: "", date: "" }; }
+}
+
+function buildFields() {
+  if (S.built) return;
+  const box = $("groups");
+  box.innerHTML = "";
+  for (const [key, meta] of Object.entries(GROUPS)) {
+    const fs = FIELDS.filter(f => f.g === key);
+    if (!fs.length) continue;
+    const d = document.createElement("details");
+    d.className = "group";
+    if (key === "cells") d.open = true;
+    d.innerHTML = '<summary>' + meta.l + '<span class="cnt">' + fs.length + "</span></summary>";
+    const body = document.createElement("div");
+    body.className = "groupbody";
+    if (meta.n) {
+      const note = document.createElement("p");
+      note.className = "gnote";
+      note.textContent = meta.n;
+      body.appendChild(note);
+    }
+    for (const f of fs) {
+      const el = document.createElement("div");
+      el.className = "field";
+      el.id = "f-" + f.reg.toString(16);
+      const id = f.reg.toString(16);
+      if (f.ro) {
+        el.className = "field ro";
+        el.innerHTML =
+          '<div class="lbl">' + f.l + "</div>" +
+          '<div class="inp"><span class="roval num" id="i-' + id + '">—</span>' +
+          (f.u ? '<span class="unit">' + f.u + "</span>" : "") + "</div>" +
+          (f.note ? '<div class="was" style="display:block">' + f.note + "</div>" : "");
+        body.appendChild(el);
+        continue;
+      }
+      const ctl = f.t === "select"
+        ? '<select id="i-' + id + '" aria-label="' + f.l + '">' +
+            f.opts.map(o => '<option value="' + o[0] + '">' + o[1] + "</option>").join("") + "</select>"
+        : '<input id="i-' + id + '" type="number" step="' + (f.dec ? "0.1" : "1") +
+          '" inputmode="decimal" autocomplete="off" aria-label="' + f.l + '">';
+      el.innerHTML =
+        '<div class="lbl">' + f.l + "</div>" +
+        '<div class="inp">' + ctl + (f.u ? '<span class="unit">' + f.u + "</span>" : "") + "</div>" +
+        '<div class="was">was <b id="w-' + id + '">—</b></div>' +
+        '<div class="fmsg hidden" id="m-' + id + '"></div>';
+      body.appendChild(el);
+      el.querySelector(ctl.trim().startsWith("<select") ? "select" : "input")
+        .addEventListener("input", () => onEdit(f.reg));
+    }
+    d.appendChild(body);
+    box.appendChild(d);
+  }
+  S.built = true;
+}
+
+function onEdit(reg) {
+  const f = FIELDS.find(x => x.reg === reg);
+  const el = $("i-" + reg.toString(16));
+  let v = f.t === "select" ? Number(el.value) : parseFloat(el.value);
+  if (Number.isNaN(v)) return;
+  S.vals[reg] = v;
+  if (Math.abs(v - S.orig[reg]) < 1e-9) S.dirty.delete(reg); else S.dirty.add(reg);
+  paintField(f);
+  updateBar();
+}
+
+function paintField(f) {
+  if (f.ro) return;
+  const id = f.reg.toString(16);
+  const el = $("f-" + id), msg = $("m-" + id);
+  const v = S.vals[f.reg];
+  let err = "";
+  if (v < f.min || v > f.max) err = "Must be " + f.min + "–" + f.max + (f.u ? " " + f.u : "");
+  // unambiguous cross-checks only
+  if (!err && f.reg === 0x8c && v <= (S.vals[0x8e] || 0)) err = "Must be above the cell under-voltage protection";
+  if (!err && f.reg === 0x8e && v >= (S.vals[0x8c] || 9999)) err = "Must be below the cell over-voltage protection";
+  if (!err && f.reg === 0x90 && v <= (S.vals[0x92] || 0)) err = "Must be above the pack under-voltage protection";
+  if (!err && f.reg === 0x92 && v >= (S.vals[0x90] || 99999)) err = "Must be below the pack over-voltage protection";
+  if (!err && f.reg === 0xa3 && v >= (S.vals[0x8c] || 9999)) err = "Must be below the cell over-voltage protection";
+  el.className = "field" + (err ? " err" : S.dirty.has(f.reg) ? " dirty" : "");
+  // the "was …" baseline is only worth showing once you've actually changed it
+  const was = el.querySelector(".was");
+  if (was) was.style.display = (S.dirty.has(f.reg) || err) ? "" : "none";
+  msg.textContent = err;
+  msg.classList.toggle("hidden", !err);
+  el.dataset.err = err ? "1" : "";
+}
+
+function updateBar() {
+  const n = S.dirty.size;
+  $("dirtyCount").textContent = n;
+  $("dirtyLabel").textContent = n === 1 ? "change" : "changes";
+  const blocked = FIELDS.some(f => !f.ro && $("f-" + f.reg.toString(16))?.dataset.err === "1");
+  $("applyBtn").disabled = n === 0 || blocked;
+  $("revertBtn").disabled = n === 0;
+}
+
+async function loadSettings() {
+  state.settingsBusy = true;
+  try {
+    const [buf, info] = [await readParams(), await readInfo()];
+    S.vals = {}; S.orig = {}; S.dirty.clear();
+    for (const f of FIELDS) {
+      const raw = (buf[(f.reg - 0x80) * 2] << 8) | buf[(f.reg - 0x80) * 2 + 1];
+      const v = fromRaw(f, raw);
+      S.vals[f.reg] = f.dec ? +v.toFixed(1) : Math.round(v);
+      S.orig[f.reg] = S.vals[f.reg];
+    }
+    buildFields();
+    for (const f of FIELDS) {
+      const id = f.reg.toString(16);
+      const el = $("i-" + id);
+      if (f.ro) { el.textContent = S.vals[f.reg]; continue; }
+      if (f.t === "select") el.value = String(S.vals[f.reg]); else el.value = S.vals[f.reg];
+      $("w-" + id).textContent = S.orig[f.reg] + (f.u ? " " + f.u : "");
+      paintField(f);
+    }
+    $("infoSw").textContent = info.sw || "—";
+    $("infoHw").textContent = info.hw || "—";
+    $("infoDate").textContent = info.date || "—";
+    $("infoPack").textContent = (state.sample ? state.sample.nCells + "S · " : "") +
+      S.vals[0x80] + " Ah · " + (FIELDS.find(f => f.reg === 0x89).opts[S.vals[0x89]] || ["?", "?"])[1];
+    $("applyLog").textContent = "";
+    updateBar();
+  } catch (e) {
+    $("authErr").textContent = "Couldn't read parameters: " + e.message;
+    $("authErr").classList.remove("hidden");
+    $("applyLog").textContent = "Couldn't read parameters: " + e.message;
+    toast("Couldn't read parameters: " + e.message, true);
+    log("settings load failed: " + e.message);
+  } finally {
+    state.settingsBusy = false;
+  }
+}
+
+async function tryUnlock() {
+  const btn = $("unlockBtn"), inp = $("pwInput"), err = $("authErr");
+  err.classList.add("hidden");
+  inp.classList.remove("bad");
+  if (state.mode === "idle") { err.textContent = "Connect to a BMS first, or press Demo data."; err.classList.remove("hidden"); return; }
+  btn.disabled = true; btn.textContent = "Checking…";
+  try {
+    const stored = await readPassword();
+    S.expected = stored || "123456";        // some firmware returns blank; fall back to Daly's default
+    if (!stored) {
+      $("authHint").textContent = "Couldn't read a stored code from the BMS — assuming Daly's default (123456).";
+    }
+    if (inp.value.trim() === S.expected) {
+      S.unlocked = true;
+      $("authCard").classList.add("hidden");
+      $("settingsBody").classList.remove("hidden");
+      setAuthPill(true);
+      await loadSettings();
+      log("settings unlocked");
+    } else {
+      inp.classList.add("bad");
+      err.textContent = "Wrong code. Daly's factory default is 123456.";
+      err.classList.remove("hidden");
+      inp.select();
+    }
+  } catch (e) {
+    err.textContent = e.message;
+    err.classList.remove("hidden");
+  } finally {
+    btn.disabled = false; btn.textContent = "Unlock";
+  }
+}
+
+function setAuthPill(on) {
+  const p = $("authPill");
+  p.className = "pill" + (on ? " unlocked" : "");
+  $("authText").textContent = on ? "unlocked" : "locked";
+}
+
+async function applyChanges() {
+  if (!S.unlocked || !S.dirty.size) return;
+  const btn = $("applyBtn"), revert = $("revertBtn");
+  const regs = [...S.dirty].sort((a, b) => a - b);
+  const fld = (reg) => FIELDS.find((f) => f.reg === reg);
+  const wanted = new Map(regs.map((r) => [r, toRaw(fld(r), S.vals[r])]));
+  const status = new Map(regs.map((r) => [r, "ok"]));
+
+  state.settingsBusy = true;
+  $("groups").classList.add("writing");
+  btn.disabled = true; revert.disabled = true;
+  btn.textContent = "Writing\u2026";
+  $("applyLog").textContent = "";
+
+  try {
+    let done = 0;
+    for (const reg of regs) {
+      const raw = wanted.get(reg);
+      btn.textContent = "Writing " + (done + 1) + "/" + regs.length + "\u2026";
+      try {
+        if (state.mode === "demo") {
+          const o = (reg - 0x80) * 2;
+          demoBuf[o] = (raw >> 8) & 255; demoBuf[o + 1] = raw & 255;
+          await new Promise((r) => setTimeout(r, 40));
+        } else {
+          // A missing echo is normal on Daly firmware, so it is never treated as
+          // failure here — the read-back below decides.
+          const how = await writeQuiet(reg, raw, 400);
+          log("write 0x" + reg.toString(16) + " = " + raw + " (" + how + ")");
+        }
+      } catch (e) {
+        status.set(reg, "error:" + e.message);
+      }
+      done++;
+      await new Promise((r) => setTimeout(r, 80));
+    }
+    if (regs.length) btn.textContent = "Verifying\u2026";
+
+    const staleOnes = async () => {
+      const buf = await readParams();
+      const bad = [];
+      for (const reg of regs) {
+        const got = (buf[(reg - 0x80) * 2] << 8) | buf[(reg - 0x80) * 2 + 1];
+        if (got !== wanted.get(reg)) bad.push(reg);
+      }
+      return bad;
+    };
+
+    await new Promise((r) => setTimeout(r, 250));          // let it commit
+    let bad = [], verified = false;
+    try { bad = await staleOnes(); verified = true; }
+    catch (e) { log("verify read failed: " + e.message); }
+    if (bad.length) {
+      await new Promise((r) => setTimeout(r, 450));        // one retry, some firmwares lag
+      try { bad = await staleOnes(); verified = true; }
+      catch (e) { log("verify retry failed: " + e.message); }
+      for (const reg of bad) if (status.get(reg) === "ok") status.set(reg, "nostore");
+    }
+    if (!verified) for (const reg of regs) if (status.get(reg) === "ok") status.set(reg, "sent");
+  } finally {
+    S.dirty.clear();
+    await loadSettings().catch(() => {});
+    $("groups").classList.remove("writing");
+    state.settingsBusy = false;
+    btn.textContent = "Apply";
+    revert.disabled = true;
+
+    const lines = regs.map((reg) => {
+      const f = fld(reg);
+      const v = fromRaw(f, wanted.get(reg));
+      const shown = (f.dec ? v.toFixed(1) : Math.round(v)) + (f.u ? " " + f.u : "");
+      const st = status.get(reg);
+      const el = $("f-" + reg.toString(16));
+      if (el) el.classList.add(st === "ok" ? "ok" : "err");
+      if (st === "ok") return "\u2713 " + f.l + " \u2192 " + shown;
+      if (st === "sent") return "? " + f.l + " \u2192 " + shown + " \u2014 sent, couldn't re-read to confirm";
+      if (st === "nostore") return "\u2717 " + f.l + " \u2192 " + shown + " \u2014 reads back unchanged";
+      return "\u2717 " + f.l + " \u2014 " + String(st).replace(/^error:/, "");
+    });
+
+    $("applyLog").textContent = lines.join("\n");
+    toast(lines.some((l) => l[0] === "\u2717") ? "Some values didn't stick \u2014 see the log" : "Parameters written");
+  }
+}
+
+function setView(v) {
+  view = v;
+  $("dashView").classList.toggle("hidden", v !== "dash");
+  $("settingsView").classList.toggle("hidden", v !== "settings");
+  $("settingsBtn").classList.toggle("hidden", v === "settings");
+  if (v === "settings") refreshAuthUI();
+  else render();
+}
+
+function refreshAuthUI() {
+  const live = state.mode !== "idle";
+  $("unlockBtn").disabled = !live;
+  $("pwInput").disabled = !live;
+  $("authHint").textContent = live
+    ? (state.mode === "demo" ? "Demo mode — code is 123456 and nothing is written." : "Enter the BMS parameter code.")
+    : "Connect to a BMS first, or use Demo data.";
+  if (!live) lockSettings();
+}
+
+function lockSettings() {
+  S.unlocked = false; S.expected = null;
+  S.dirty.clear();
+  $("authCard").classList.remove("hidden");
+  $("settingsBody").classList.add("hidden");
+  $("applyBtn").disabled = true;
+  $("revertBtn").disabled = true;
+  $("applyLog").textContent = "";
+  if (S.built) for (const f of FIELDS) paintField(f);
+  setAuthPill(false);
+}
+
+/* ============================================================
+   8. WIRING
+   ============================================================ */
+$("connectBtn").addEventListener("click", () => {
+  if (state.mode === "live") {
+    clearInterval(ble.timer); ble.timer = null;
+    try { ble.device && ble.device.gatt.disconnect(); } catch (e) {}
+    state.mode = "idle"; setConn("off", "disconnected");
+    $("connectBtn").textContent = "Connect";
+    render();
+    return;
+  }
+  doConnect();
+});
+
+$("demoBtn").addEventListener("click", () => {
+  if (state.mode === "demo") {
+    clearInterval(demoTimer); demoTimer = null;
+    state.mode = "idle"; state.sample = null; state.hist = []; state.cellHist = [];
+    setConn("off", "disconnected");
+    $("demoBtn").textContent = "Demo data";
+    $("ageTag").textContent = "no data";
+    lockSettings();
+    if (view === "settings") refreshAuthUI();
+    log("demo stopped");
+    render();
+  } else {
+    if (state.mode === "live") {
+      clearInterval(ble.timer); ble.timer = null;
+      try { ble.device && ble.device.gatt.disconnect(); } catch (e) {}
+    }
+    state.mode = "demo";
+    demoBuf = demoParams();
+    demoMos.charge = demoMos.discharge = true;
+    $("connectBtn").textContent = "Connect";
+    state.hist = []; state.cellHist = []; state.lastRx = Date.now();
+    setConn("demo", "demo data");
+    $("demoBtn").textContent = "Stop demo";
+    log("demo started — simulated 16S LiFePO4");
+    if (view === "settings") refreshAuthUI();
+    demoStep();
+    clearInterval(demoTimer);
+    demoTimer = setInterval(demoStep, 1000);
+    toast("Demo mode — simulated pack, nothing is written");
+  }
+});
+
+// ---- settings wires ----
+$("settingsBtn").addEventListener("click", () => setView("settings"));
+$("backBtn").addEventListener("click", () => setView("dash"));
+$("unlockBtn").addEventListener("click", tryUnlock);
+$("pwInput").addEventListener("keydown", (e) => { if (e.key === "Enter") tryUnlock(); });
+$("applyBtn").addEventListener("click", applyChanges);
+$("revertBtn").addEventListener("click", () => {
+  S.dirty.clear();
+  for (const f of FIELDS) {
+    S.vals[f.reg] = S.orig[f.reg];
+    const el = $("i-" + f.reg.toString(16));
+    if (el) el.value = f.t === "select" ? String(S.orig[f.reg]) : S.orig[f.reg];
+    paintField(f);
+  }
+  updateBar();
+  $("applyLog").textContent = "";
+});
+
+$("swChg").addEventListener("click", (e) => setMosfet("charge", e.currentTarget.getAttribute("aria-checked") !== "true"));
+$("swDsg").addEventListener("click", (e) => setMosfet("discharge", e.currentTarget.getAttribute("aria-checked") !== "true"));
+
+// ---- install prompt + offline shell ----
+let installEvent = null;
+window.addEventListener("beforeinstallprompt", (e) => {
+  e.preventDefault();
+  installEvent = e;
+  $("installBtn").classList.remove("hidden");
+});
+$("installBtn").addEventListener("click", async () => {
+  if (!installEvent) return;
+  installEvent.prompt();
+  const choice = await installEvent.userChoice;
+  if (choice.outcome === "accepted") $("installBtn").classList.add("hidden");
+  installEvent = null;
+});
+window.addEventListener("appinstalled", () => $("installBtn").classList.add("hidden"));
+
+if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
+  navigator.serviceWorker.register("./sw.js").catch((e) => log("offline cache unavailable: " + e.message));
+}
+
+window.addEventListener("resize", () => { drawCurrent(state.sample); drawHeat(); });
+
+// ?demo — open the page straight into simulated mode, with history pre-seeded
+// so the charts and heat-map have something to show immediately.
+if (/[?&]demo\b/.test(location.search)) {
+  $("demoBtn").dispatchEvent(new Event("click"));
+  for (let i = 0; i < 150; i++) demoStep();
+  render();
+}
+setInterval(() => { if (state.sample) render(); }, 1000);   // keep the age tag honest
+
+render();
+
+// exposed for headless tests
+window.__daly = { state, render, demoStep, decodeBlock, extractFrame, readFrame, writeFrame, crc16,
+  faultList, FULL_READ, S, FIELDS, setView, tryUnlock, applyChanges, toRaw, fromRaw, demoParams,
+  ble, feed: (arr) => onBytes({ byteLength: arr.length, getUint8: (i) => arr[i] }) };
+})();
+</script>
+</body>
+</html>
