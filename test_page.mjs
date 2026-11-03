@@ -204,5 +204,47 @@ check('demo stop resets everything', () => {
   assert.equal(txt('connText'), 'disconnected');
 });
 
+console.log('\n[5] current direction follows the BMS status word, not the sign');
+const mk = (current, state) => ({
+  soc: 60, state, voltage: 52.8, current, power: Math.abs(52.8 * current),
+  maxTemp: 22, minTemp: 21, nTemps: 2, remainingAh: 14, nCells: 16,
+  cycles: 50, cells: new Array(16).fill(3.3), faults: [0, 0, 0, 0],
+  chargeMos: true, dischargeMos: true, balancing: false,
+});
+D.state.mode = "live";
+check('positive current while the BMS says charging is labelled charging', () => {
+  D.state.sample = mk(20, "charging");
+  D.render();
+  assert.equal(txt('curDir'), '(charging)');
+  assert.ok($('curFill').className.includes('chg'), 'bar should be on the charge side');
+  assert.ok(parseFloat($('curFill').style.left) < 50, 'charge fills left of centre');
+});
+check('negative current while the BMS says discharging is labelled discharging', () => {
+  D.state.sample = mk(-20, "discharging");
+  D.render();
+  assert.equal(txt('curDir'), '(discharging)');
+  assert.ok($('curFill').className.includes('dsg'));
+  assert.ok(parseFloat($('curFill').style.left) === 50);
+});
+check('history is normalised so the chart agrees with the label', () => {
+  D.state.hist = [];
+  D.pushSample(mk(20, "charging"));
+  assert.equal(D.state.hist[0].current, -20);
+  D.state.hist = [];
+  D.pushSample(mk(-20, "discharging"));
+  assert.equal(D.state.hist[0].current, 20);
+});
+check('an inverted unit teaches the fallback its polarity', () => {
+  D.signedCurrent(mk(20, "charging"));            // this unit reports charge as positive
+  assert.equal(D.signedCurrent(mk(12, "unknown")), -12, 'still charging, just unlabelled');
+  D.signedCurrent(mk(-20, "discharging"));        // back to a normal unit
+  assert.equal(D.signedCurrent(mk(12, "stationary")), 12, 'normal polarity stays positive');
+});
+check('a normal unit keeps the documented polarity', () => {
+  D.signedCurrent(mk(-20, "charging"));           // charge reported negative, as documented
+  assert.equal(D.signedCurrent(mk(12, "unknown")), 12);
+  assert.equal(D.signedCurrent(mk(0, "charging")), 0);
+});
+
 console.log(fails.length ? `\n${fails.length} FAILURE(S)\n` + fails.join('\n') : '\nALL CHECKS PASSED');
 process.exit(fails.length ? 1 : 0);

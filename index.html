@@ -346,6 +346,9 @@
   body.nodata .heat,body.nodata .cellfoot{display:none}
   body.nodata .cellchart{border-bottom:none}
   body.nodata .cellchart .cellfoot{border:0}
+  .foot{margin:24px 2px 8px;font-size:11px;color:var(--dim2);text-align:center;line-height:1.8}
+  .foot a{color:var(--dim);text-decoration:none;border-bottom:1px solid rgba(255,255,255,.16)}
+  .foot a:hover{color:var(--ink)}
   .hidden{display:none!important}
 </style>
 </head>
@@ -568,6 +571,12 @@
       <div id="applyLog" class="applylog"></div>
     </div>
   </section>
+
+  <footer class="foot">
+    Unofficial, not affiliated with Daly ·
+    <a href="https://github.com/novaprime18/Daly-BMS-BLE-Webapp#vibe-code-disclosure">source &amp; notes</a> ·
+    vibe-coded with DeepSeek V4.1-flash (1017)
+  </footer>
 </div>
 <div id="toast"></div>
 
@@ -750,7 +759,8 @@ function render() {
   $("vVolt").textContent = live ? fmt(s.voltage, 1) : "––";
   $("vPow").textContent  = live ? Math.round(Math.abs(s.power || s.voltage * s.current)) : "––";
   $("vCur").textContent  = live ? fmt(Math.abs(s.current), 1) : "––";
-  $("curDir").textContent = !live ? "" : s.current < -0.2 ? "(charging)" : s.current > 0.2 ? "(discharging)" : "(idle)";
+  const I = live ? signedCurrent(s) : 0;
+  $("curDir").textContent = !live ? "" : I < -0.2 ? "(charging)" : I > 0.2 ? "(discharging)" : "(idle)";
   $("vTemp").textContent = live ? fmt((s.maxTemp + s.minTemp) / 2, 0) : "––";
   $("vTempSub").textContent = live
     ? (s.minTemp === s.maxTemp ? s.nTemps + " sensor" + (s.nTemps === 1 ? "" : "s") : "min " + s.minTemp + " · max " + s.maxTemp)
@@ -763,11 +773,11 @@ function render() {
 
   // ---- bipolar current bar (± scale, auto-ranged) ----
   if (live) {
-    const scale = Math.max(20, Math.abs(s.current) * 1.35);
-    const frac = Math.min(0.5, Math.abs(s.current) / scale / 2);
+    const scale = Math.max(20, Math.abs(I) * 1.35);
+    const frac = Math.min(0.5, Math.abs(I) / scale / 2);
     const f = $("curFill");
-    if (s.current < 0) { f.className = "fill chg"; f.style.left = (50 - frac * 100) + "%"; f.style.width = (frac * 100) + "%"; }
-    else               { f.className = "fill dsg"; f.style.left = "50%"; f.style.width = (frac * 100) + "%"; }
+    if (I < 0) { f.className = "fill chg"; f.style.left = (50 - frac * 100) + "%"; f.style.width = (frac * 100) + "%"; }
+    else       { f.className = "fill dsg"; f.style.left = "50%"; f.style.width = (frac * 100) + "%"; }
   }
 
   // ---- badges ----
@@ -1018,10 +1028,26 @@ function renderMasfet(s) {
 /* ============================================================
    5. SAMPLE HANDLING
    ============================================================ */
+// Daly reports its own charge/discharge state in register 0x2F, independent of the
+// current register's polarity. Some units report current with the opposite sign to the
+// documentation, which silently flips every direction label and the chart, so trust the
+// status word and take only the magnitude from the current register.
+let chargeIsNegative = true;   // Daly documents charging as negative; learn the truth per unit
+
+function signedCurrent(s) {
+  const mag = Math.abs(s.current);
+  if (mag < 0.05) return 0;
+  if (s.state === "charging" || s.state === "discharging") {
+    chargeIsNegative = s.current < 0;          // this unit's actual polarity
+    return s.state === "charging" ? -mag : mag; // display convention: charge negative
+  }
+  return chargeIsNegative ? s.current : -s.current;   // no status word: use what we learned
+}
+
 function pushSample(s) {
   state.sample = s;
   state.lastRx = Date.now();
-  state.hist.push({ t: state.lastRx, current: s.current, power: s.power });
+  state.hist.push({ t: state.lastRx, current: signedCurrent(s), power: s.power });
   if (state.hist.length > MAX_HIST) state.hist.shift();
   if (s.cells && s.cells.length) {
     state.cellHist.push(s.cells.slice());
@@ -1277,7 +1303,7 @@ function demoStep() {
     faults: [0, 0, 0, 0],
   };
   state.lastRx = now;
-  state.hist.push({ t: now, current: state.sample.current, power: state.sample.power });
+  state.hist.push({ t: now, current: signedCurrent(state.sample), power: state.sample.power });
   if (state.hist.length > MAX_HIST) state.hist.shift();
   state.cellHist.push(cells.slice());
   if (state.cellHist.length > MAX_HIST) state.cellHist.shift();
@@ -1821,7 +1847,8 @@ render();
 // exposed for headless tests
 window.__daly = { state, render, demoStep, decodeBlock, extractFrame, readFrame, writeFrame, crc16,
   faultList, FULL_READ, S, FIELDS, setView, tryUnlock, applyChanges, toRaw, fromRaw, demoParams,
-  ble, feed: (arr) => onBytes({ byteLength: arr.length, getUint8: (i) => arr[i] }) };
+  ble, feed: (arr) => onBytes({ byteLength: arr.length, getUint8: (i) => arr[i] }),
+  pushSample, signedCurrent };
 })();
 </script>
 </body>
